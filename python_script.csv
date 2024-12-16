@@ -1,0 +1,142 @@
+Line,Code
+1,import numpy as np
+2,import pandas as pd
+3,from sklearn.feature_extraction.text import TfidfVectorizer
+4,from sklearn.model_selection import train_test_split
+5,from sklearn.linear_model import LogisticRegression
+6,from sklearn.metrics import classification_report
+7,import nest_asyncio
+8,import random
+9,from pyngrok import ngrok
+10,import uvicorn
+11,"from fastapi import FastAPI, UploadFile"
+12,from pydantic import BaseModel
+13,import spacy
+14,import logging
+15,import speech_recognition as sr
+16,from typing import List
+17,import re
+18,from difflib import SequenceMatcher
+19,from pydub import AudioSegment
+20,import tempfile
+21,nlp = spacy.load('en_core_web_sm')
+22,LOW_CONFIDENCE_PATTERNS = [
+23,"    ('I just think', 'Consider removing 'just' to make it more assertive.'),"
+24,"    ('I'm sorry', 'Avoid excessive apologizing unless necessary.'),"
+25,"    ('maybe', 'Try using more definitive words.'),"
+26,"    ('I could be wrong, but', 'Consider removing the disclaimer to sound more confident.'),"
+27,"    ('I think', 'Consider removing 'I think' to sound more confident.'),"
+28,"    ('perhaps', 'Replace 'perhaps' with a more definitive word.'),"
+29,"    ('I can't do it', 'Consider using positive language.'),"
+30,"    ('I'm not sure', 'Avoid showing uncertainty. Use a confident statement instead.'),"
+31,"    ('unsure', 'Replace with a more assertive phrase.'),"
+32,"    ('totally unsure', 'Replace with a confident alternative.'),"
+33,"    ('we should consider', 'Use 'we must' or 'we will' for assertiveness.')"
+34,]
+35,def detect_passive_voice(doc):
+36,    passive_suggestions = []
+37,    for token in doc:
+38,        if token.dep_ == 'auxpass' and token.head.pos_ == 'VERB':
+39,            agent = [child for child in token.head.children if child.dep_ == 'agent']
+40,            if agent:
+41,                passive_suggestions.append(f'Passive voice detected: '{token.head.text}' with agent '{agent[0].text}'')
+42,            else:
+43,                passive_suggestions.append(f'Passive voice detected: '{token.head.text}'')
+44,    return passive_suggestions
+45,def analyze_text_spacy(text):
+46,    doc = nlp(text)
+47,    passive_voice_suggestions = detect_passive_voice(doc)
+48,    section_scores = []
+49,    suggestions = []
+50,    confidence_score = 5  # Full confidence to start with
+51,    for sent in doc.sents:
+52,        score = 5
+53,        local_suggestions = []
+54,"        for pattern, suggestion in LOW_CONFIDENCE_PATTERNS:"
+55,"            if re.search(re.escape(pattern), sent.text, re.IGNORECASE):"
+56,"                local_suggestions.append((pattern, suggestion))"
+57,                score -= 1  # Deduct points for each pattern match
+58,        section_scores.append({
+59,"            'text': sent.text,"
+60,"            'confidence_score': score,"
+61,            'suggestions': local_suggestions
+62,        })
+63,        suggestions.extend(local_suggestions)
+64,"    overall_score = max(1, confidence_score - len(suggestions))"
+65,    return {
+66,"        'overall_confidence_score': overall_score,"
+67,"        'section_scores': section_scores,"
+68,"        'passive_voice_suggestions': passive_voice_suggestions,"
+69,"        'highlighted_text': [str(ent) for ent in doc.ents],"
+70,        'suggestions': suggestions
+71,    }
+72,def generate_synthetic_data():
+73,    base_phrases = [
+74,"        ('I just think', 'Underconfident'),"
+75,"        ('I'm sorry', 'Underconfident'),"
+76,"        ('maybe', 'Underconfident'),"
+77,"        ('I could be wrong, but', 'Underconfident'),"
+78,"        ('I think', 'Underconfident'),"
+79,"        ('perhaps', 'Underconfident'),"
+80,"        ('I'm not sure', 'Underconfident'),"
+81,"        ('unsure', 'Underconfident'),"
+82,"        ('totally unsure', 'Underconfident'),"
+83,"        ('I can't do it', 'Underconfident'),"
+84,"        ('This is a good idea.', 'Neutral'),"
+85,"        ('I am the best', 'Neutral'),"
+86,"        ('I can do it', 'Neutral'),"
+87,"        ('Let's move forward with this strategy.', 'Neutral'),"
+88,"        ('It is possible', 'Neutral'),"
+89,"        ('Responses may delay', 'Neutral'),"
+90,"        ('Data steps for ML analysis', 'Neutral')"
+91,    ]
+92,    synthetic_data = []
+93,"    for phrase, label in base_phrases:"
+94,        for _ in range(50):
+95,"            random_suffix = f' {random.choice(['!', 'maybe?', 'surely.', 'variation'])}'"
+96,            variation = phrase + random_suffix
+97,"            synthetic_data.append((variation, label))"
+98,    return synthetic_data
+99,data = generate_synthetic_data()
+100,"df = pd.DataFrame(data, columns=['Text', 'Label'])"
+101,"label_map = {'Underconfident': 0, 'Neutral': 1}"
+102,df['Label'] = df['Label'].map(label_map)
+103,vectorizer = TfidfVectorizer()
+104,X = vectorizer.fit_transform(df['Text'])
+105,y = df['Label']
+106,"X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)"
+107,model = LogisticRegression()
+108,"model.fit(X_train, y_train)"
+109,def classify_text_ml(input_text):
+110,    input_vec = vectorizer.transform([input_text])
+111,    probabilities = model.predict_proba(input_vec)
+112,"    reverse_label_map = {v: k for k, v in label_map.items()}"
+113,    return {
+114,"        'label': reverse_label_map[np.argmax(probabilities)],"
+115,"        'confidence_scores': {reverse_label_map[i]: prob for i, prob in enumerate(probabilities[0])}"
+116,    }
+117,"def save_user_submission(text, label):"
+118,"    new_data = pd.DataFrame([[text, label]], columns=['Text', 'Label'])"
+119,    try:
+120,"        new_data.to_csv('user_submissions.csv', mode='a', header=False, index=False)"
+121,    except Exception as e:
+122,        logging.error(f'Error saving user submission: {str(e)}')
+123,def retrain_model():
+124,    try:
+125,"        new_data = pd.read_csv('user_submissions.csv', names=['Text', 'Label'])"
+126,"        updated_data = pd.concat([df, new_data], ignore_index=True)"
+127,        updated_data['Label'] = updated_data['Label'].map(label_map)
+128,        if updated_data['Label'].isnull().any():
+129,            raise ValueError('Invalid labels found in user submissions.')
+130,        X = vectorizer.fit_transform(updated_data['Text'])
+131,        y = updated_data['Label']
+132,        global model
+133,        model = LogisticRegression()
+134,"        model.fit(X, y)"
+135,        logging.info('Model retrained successfully.')
+136,    except FileNotFoundError:
+137,        logging.error('User submissions file not found. Retraining skipped.')
+138,        raise ValueError('No user submissions available for retraining.')
+139,    except Exception as e:
+140,        logging.error(f'Error retraining model: {str(e)}')
+141,        raise ValueError(f'Retraining failed: {str(e)}')
