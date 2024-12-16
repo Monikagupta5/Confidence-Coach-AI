@@ -76,6 +76,20 @@ http://127.0.0.1:8000/docs
 - **POST**: Retrains the machine learning model using user-submitted data.
 - **Output**: Success or error message.
 
+## Demo Video
+
+Watch the Confidence Coach AI in action by accessing the video [here](https://drive.google.com/file/d/1Ta-q0j31MmRSTwSfYzIW7aC1xm7J--uU/view?usp=drive_link)).
+
+## Demo Pictures
+
+1. [Picture 1](https://drive.google.com/file/d/1tJ43OsWKrCt9PHV2CfiD62vgtn_0TwQm/view?usp=drive_link)
+2. [Picture 2](https://drive.google.com/file/d/1qwCtx3Ypr6BNQgHpMfkqdQposwKttIu2/view?usp=drive_link)
+
+## Demo Recording
+
+[View the Recording](https://drive.google.com/file/d/1Zq2s2A3W1jmWC7-R-DpGq3oWjXIbtHmZ/view?usp=drive_link)
+
+
 ## How It Works
 
 1. **Text Analysis**:
@@ -96,12 +110,6 @@ http://127.0.0.1:8000/docs
 4. Push to the branch (`git push origin feature-name`).
 5. Open a pull request.
 
-## Roadmap
-
-- Enhance NLP model for more nuanced feedback.
-- Add support for multiple languages.
-- Develop a user-friendly web interface.
-- Integrate confidence tracking dashboards.
 
 ## License
 
