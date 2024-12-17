@@ -11,3 +11,5 @@ python-multipart==0.0.6
 numpy==1.25.2
 pandas==2.1.2
 scikit-learn==1.4.0
+streamlit
+your-chatbot-dependencies
